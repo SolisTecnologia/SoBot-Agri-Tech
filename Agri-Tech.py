@@ -1,46 +1,56 @@
 #!/usr/bin/python3
+"""
+Solis Robot - SoBot
 
-import serial               # Biblioteca serial para comunicação USB
-import cv2                  # Biblioteca de visão computacional OpenCV2
-import numpy as np          # Biblioteca de lgica númerica
-from time import time,sleep # Biblioteca de tempo do sistema
-from tracker import *       # Biblioteca desenvolvida para identificar e seguir os objetos
-import threading            # Biblioteca utilizada para contagem de linhas tempo
+Agri-Tech.py: Programming example for SoBot to perform tasks using the Agri-Tech module and computer vision for decision making.
 
-'''
-###################################
-        Variáveis globais
-###################################
-'''
+Created By   : Vinicius M. Kawakami
+Version      : 1.0
 
-ContadorSaidas = 0              # Variável para contar os objetos verdes que passaram pela zona de detecção
-ContadorSaidasGreen = 0         # Variável para contar os objetos vermelhos que passaram pela zona de detecção
-AreaContornoLimiteMin = 30      # Valor da area mínima para detectar contorno
-OffsetLinhaSaida = 60           # Valor para posicionar a linha de saída
-AreaCount = 10                  # Valor em pixel da área para detectar o contorno
-AreaMinY = 140                  # Determina a posição da linha que começa a detectar objeto
-AreaMaxY = 310                  # Determina a posição da linha que deixa de detectar objetos
-CoordenadaYLinhaSaida = 0       # Coordenada da linha que detecta objeto
-CoordenadaXLeft = 0             # Coordenada da linha vertical esquerda que divide a seção 1 e 2
-CoordenadaXCenter = 0           # Coordenada da linha vertical central que divide a seção 2 e 3
-CoordenadaXRight = 0            # Coordenada da linha vertical direita que divide a seção 3 e 4
-ContadorQuad1 = 0               # Variável para contagem de objetos VM da seção 1
-ContadorQuad2 = 0               # Variável para contagem de objetos VM da seção 2
-ContadorQuad3 = 0               # Variável para contagem de objetos VM da seção 3
-ContadorQuad4 = 0               # Variável para contagem de objetos VM da seção 4
-idTempQ1 = 65535                # Variável para guardar um ID detectado e contar apenas uma vez na seção 1
-idTempQ2 = 65535                # Variável para guardar um ID detectado e contar apenas uma vez na seção 2
-idTempQ3 = 65535                # Variável para guardar um ID detectado e contar apenas uma vez na seção 3
-idTempQ4 = 65535                # Variável para guardar um ID detectado e contar apenas uma vez na seção 4
-count_p = 0                     # Variável incremental para identificar disparos de tempo inícial e final
+Company: Solis Tecnologia
+"""
+
+import serial               # Serial libary for USB communication
+import cv2                  # Computer Vision Library OpenCV2
+import numpy as np          # Numerical logic library
+from time import time,sleep # System time library
+from tracker import *       # Library developed to identify and track objects
+import threading            # Library used to count timelines
 
 '''
 ###################################
-        Funções Auxiliares
+        Global Variables
+###################################
+'''
+
+ContadorSaidas = 0              # Variable to count the green objects that passed through the detection zone
+ContadorSaidasGreen = 0         # Variable to count the red objects that passed through the detection zone
+AreaContornoLimiteMin = 30      # Minimum area value to detect contour
+OffsetLinhaSaida = 60           # Value to position the output line
+AreaCount = 10                  # Pixel value of the area to detect the contour
+AreaMinY = 140                  # Determines the position of the line that starts detecting object
+AreaMaxY = 310                  # Determines the position of the line that stops detecting objects
+CoordenadaYLinhaSaida = 0       # Line coordinate that detects object
+CoordenadaXLeft = 0             # Coordinate of the left vertical line that divides section 1 and 2
+CoordenadaXCenter = 0           # Coordinate of the central vertical line that divides section 2 and 3
+CoordenadaXRight = 0            # Coordinate of the right vertical line that divides section 3 and 4
+ContadorQuad1 = 0               # Variable for counting VM objects in section 1
+ContadorQuad2 = 0               # Variable for counting VM objects from section 2
+ContadorQuad3 = 0               # Variable for counting VM objects from section 3
+ContadorQuad4 = 0               # Variable for counting VM objects from section 4
+idTempQ1 = 65535                # Variable to store a detected ID and count only once in section 1
+idTempQ2 = 65535                # Variable to store a detected ID and count only once in section 2
+idTempQ3 = 65535                # Variable to store a detected ID and count only once in section 3
+idTempQ4 = 65535                # Variable to store a detected ID and count only once in section 4
+count_p = 0                     # Incremental variable to identify start and end time triggers
+
+'''
+###################################
+        Auxiliary Functions
 ###################################
 '''
     
-# Função para verificar se o objeto está passando no quadrante 1 da linha de saída monitorada
+# Function to check if the object is passing in quadrant 1 of the monitored output line
 def TestaQuad1(idQ1,y, c_y_out):
     global idTempQ1
 
@@ -54,7 +64,7 @@ def TestaQuad1(idQ1,y, c_y_out):
     else:
         return 0
 
-# Função para verificar se o objeto está passando no quadrante 2 da linha de saída monitorada
+# Function to check if the object is passing in quadrant 2 of the monitored output line
 def TestaQuad2(idQ2,y, c_y_out):
     global idTempQ2
     DiferencaAbsoluta = abs(y - c_y_out)
@@ -67,7 +77,7 @@ def TestaQuad2(idQ2,y, c_y_out):
     else:
         return 0
 
-# Função para verificar se o objeto está passando no quadrante 3 da linha de saída monitorada
+# Function to check if the object is passing in quadrant 3 of the monitored output line
 def TestaQuad3(idQ3,y, c_y_out):
     global idTempQ3
     DiferencaAbsoluta = abs(y - c_y_out)
@@ -80,7 +90,7 @@ def TestaQuad3(idQ3,y, c_y_out):
     else:
         return 0
 
-# Função para verificar se o objeto está passando no quadrante 4 da linha de saída monitorada
+# Function to check if the object is passing in quadrant 4 of the monitored output line
 def TestaQuad4(idQ4,y,c_y_out):
     global idTempQ4
     DiferencaAbsoluta = abs(y - c_y_out)
@@ -93,14 +103,14 @@ def TestaQuad4(idQ4,y,c_y_out):
     else:
         return 0
 
-# Função de retorno da chamada do threading.timer com argumentos de comando, configuração serial e status
+# Function of the threading.timer module with command arguments, serial configuration and status for sending a serial command
 def TimerP (*args):
     cmd = args[0]
     serialUSB = args[1]
     print("Count_F"+str(args[3])+" "+str(args[2])+" "+str(cmd)+" "+str(time()))
     serialUSB.write(bytes(cmd, 'utf-8'))
 
-# Função para marcar os contornos, verificar posicionamento, realizar contagem e iniciar tempo de disparo do comando para o robô
+# Function to mark the contours, check positioning, perform counting and start command trigger time for the robot
 def CntsOutputTest(Frame,x, y, w, h, idOut,colorId,CoordYSaida,CoordXLeft,CoordXCenter,CoordXRight,serialUSB,width):
     global ContadorSaidas
     global ContadorSaidasGreen
@@ -110,20 +120,20 @@ def CntsOutputTest(Frame,x, y, w, h, idOut,colorId,CoordYSaida,CoordXLeft,CoordX
     global ContadorQuad4
     global count_p
 
-    # Verifica a cor do objeto detectado e faz um retangulo ao redor
-    if colorId:      # Verifica se é vermelho
+    # Checks the color of the detected object and makes a rectangle around it
+    if colorId:      # Check if it's red
         colorRet = (40,180,255)
     else:
         colorRet = (255,180,20)
     cv2.rectangle(Frame, (x, y), (x + w, y + h), colorRet, 2)
 
-    # Determina o ponto central do contorno e desenha um circulo para indicar
+    # Determines the center point of the contour and draws a circle to indicate
     CoordenadaXCentroContorno = int((x+x+w)/2)
     CoordenadaYCentroContorno = int((y+y+h)/2)
     PontoCentralContorno = (CoordenadaXCentroContorno,CoordenadaYCentroContorno)
     cv2.circle(Frame, PontoCentralContorno, 1, (0, 0, 0), 1)
 
-    # Testa interseccao dos centros dos contornos com a linha de referencia e seus quadrantes
+    # Tests intersection of contour centers with the reference line and its quadrants
     if (CoordenadaXCentroContorno >= 0) and (CoordenadaXCentroContorno <= CoordXLeft):
         if (TestaQuad1(idOut,CoordenadaYCentroContorno, CoordYSaida)):
             if colorId:
@@ -172,7 +182,7 @@ def CntsOutputTest(Frame,x, y, w, h, idOut,colorId,CoordYSaida,CoordXLeft,CoordX
 
 '''
 ###################################
-        Funçâos Principal
+        Main Functions
 ###################################
 '''
 flag_D1 = 0
@@ -181,11 +191,11 @@ flag_D3 = 0
 flag_D4 = 0
 tracker = EuclideanDistTracker()
 
-camera = cv2.VideoCapture(0, cv2.CAP_V4L2)
-
-camera.set(3, 640)
-camera.set(4, 360)
-camera.set(5, 15)  #set frame
+camera = cv2.VideoCapture(0, cv2.CAP_V4L2)  # Capture video from camera
+# Set camera settings
+camera.set(3, 640)  # set frame width
+camera.set(4, 360)  # set frame height
+camera.set(5, 15)   # set frame rate
 camera.set(cv2.CAP_PROP_BRIGHTNESS, 128)
 camera.set(cv2.CAP_PROP_CONTRAST, 32)
 camera.set(cv2.CAP_PROP_AUTO_WB, 1)
@@ -193,24 +203,24 @@ camera.set(cv2.CAP_PROP_AUTO_EXPOSURE, 3)
 
 kernel = np.ones((3, 3), np.uint8)
 
-###### VERDE ESCURO #####
+###### DARK GREEN #####
 #lower = np.array([70, 100, 100])
 #upper = np.array([77, 200, 200])
-###### VERDE CLARO #####
+###### LIGHT GREEN #####
 #lower = np.array([44, 100, 120])
 #upper = np.array([55, 200, 220])
-###### VERDE CLARO FUNDO BRANCO #####
+###### LIGHT GREEN WITH WHITE BACKGROUND #####
 lower = np.array([44, 85, 50])
 upper = np.array([55, 230, 160])
-##### VERMELHO #####
+##### RED #####
 #lower2 = np.array([0, 85, 150])
 #upper2 = np.array([15, 255, 255])
-##### VERMELHO FUNDO BRANCO #####
+##### RED WITH WHITE BACKGROUND #####
 lower2 = np.array([0, 115, 80])
 upper2 = np.array([10, 230, 185])
 lower1 = np.array([170, 115, 80])
 upper1 = np.array([180, 230, 185])
-##### ROXO FUNDO BRANCO #####
+##### PURPLE WITH WHITE BACKGROUND #####
 #lower3 = np.array([120, 75, 80])
 #upper3 = np.array([140, 220, 185])
 
@@ -220,14 +230,15 @@ colorHSV = []
 DilateBulr3 = 0
 MoveW = 0
 
+# Set serial port
 serialUSB = serial.Serial('/dev/ttyACM0', 57600, timeout=0, dsrdtr=False)
-serialUSB.flush()
+serialUSB.flush()       # Waits data configuration
 
 # Laço para realizar a leitura de alguns frames antes de iniciar a analise para estabilização da luminosidade da câmera
 for i in range(0,20):
     grabbed, Frame = camera.read()
 
-# Configura os parametros das rodas
+# Configure wheel parameters
 serialUSB.write(b"WP MT1 WD99,65")
 sleep(0.1)
 serialUSB.write(b"WP MT2 WD100,25")
@@ -235,39 +246,39 @@ sleep(0.1)
 serialUSB.write(b"WP DW261")
 sleep(0.1)
 
-# Inicializa as variáveis de rastreamento
+# Initialize tracking variables
 tracker = EuclideanDistTracker()
 
 
 while True:
-    # Realiza a leitura dos frames da imagem
+    # Reads the frames of the image
     (grabbed, Frame) = camera.read()
 
-    #se nao foi possivel obter frame, nada mais deve ser feito
+    # Check if it was possible to obtain frame
     if not grabbed:
         break
     
-    # Determina a altura e largura do frame
+    # Determines the height and width of the frame
     height = int(np.size(Frame,0))
     width = int(np.size(Frame,1))
 
-    # Região para realizar a identificação dos objetos
+    # Determines the region to perform object identification
     roi = Frame[AreaMinY:AreaMaxY, 0:width]
 
-    # Filtros para tratamento de cor do frame
+    # Filters for frame color treatment
     FrameBulr = cv2.GaussianBlur(roi, (19, 19), 0)
     FrameHsv = cv2.cvtColor(FrameBulr, cv2.COLOR_BGR2HSV)
     erode = cv2.erode(FrameHsv, kernel, iterations=1)
     dilate = cv2.dilate(erode, kernel, iterations=1)
 
-    # Determina o Range de cor vermelha e verde para localizar os contornos
+    # Determines the Color Range for locating contours
     Range1 = cv2.inRange(dilate, lower, upper)
     Range2 = cv2.inRange(dilate, lower2, upper2)
     Range3 = cv2.inRange(dilate, lower1, upper1)
     Range = Range1 + Range2 + Range3
     cnts,_ = cv2.findContours(Range.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-    # Desenha linhas de referência
+    # Draw reference lines
     CoordenadaYLinhaSaida = int((height / 2)+OffsetLinhaSaida)
     CoordenadaXLeft = int(((width/2)/2)-1)
     CoordenadaXCenter = int(width/2)
@@ -280,21 +291,20 @@ while True:
     cv2.line(Frame, (0,AreaMinY), (width,AreaMinY), (200, 255, 100), 1)
     cv2.line(Frame, (0,AreaMaxY), (width,AreaMaxY), (200, 255, 100), 1)
 
-    # Faz a varredura das áreas encontradas
+    # Scans the areas found
     detections = []
 
     for c in cnts:
-        #contornos de area muito pequena sao ignorados.
+        # contours of very small area are ignored
         #print(str(cv2.contourArea(c))+' '+str(color))
         if cv2.contourArea(c) > AreaContornoLimiteMin: 
-            #obtem coordenadas do contorno (na verdade, de um retangulo que consegue abrangir todo ocontorno) e
-            #realca o contorno com um retangulo.
-            (x, y, w, h) = cv2.boundingRect(c)  #x e y: coordenadas do vertice superior esquerdo
-                                                #w e h: respectivamente largura e altura do retangulo
-            # Adiciona contorno encontrado para função de rastreamento
+            # obtem coordenadas do contorno e realca o contorno com um retangulo.
+            (x, y, w, h) = cv2.boundingRect(c)  #x e y: top left vertex coordinates
+                                                #w e h: respectively width and height of the rectangle
+            # Adds found contour to tracking function
             detections.append([x, y, w, h])
 
-    # Verifica os contornos rastreáveis e marca na tela e faz a contagem dos contornos encontrados
+    # Marks the traced contours on the screen and counts them
     boxes_ids = tracker.update(detections)
     for box_id in boxes_ids:
         colorHSV = []
@@ -309,7 +319,7 @@ while True:
         
         CntsOutputTest(Frame,x, y+AreaMinY, w, h, id,colorId,CoordenadaYLinhaSaida,CoordenadaXLeft,CoordenadaXCenter,CoordenadaXRight,serialUSB,width)
 
-    # Informa na imagem o número de objetos que passaram pelas zonas pré determinadas
+    # Informs in the image the number of objects that passed through the predetermined zones
     TotalSaidas = ContadorSaidasGreen + ContadorSaidas
 
     cv2.rectangle(Frame, (0,0), (width,27), (255,255,255), -1)
@@ -330,68 +340,73 @@ while True:
     cv2.putText(Frame, "SE4: {}".format(str(ContadorQuad4)), (CoordenadaXRight + 3, height - 6),
                 cv2.FONT_HERSHEY_SIMPLEX, 0.6, (50, 50, 220), 1)
 
+    # Show the frame image
     cv2.imshow("Original", Frame)
 
+    # checks if any button was pressed
     buttonKey = cv2.waitKey(1)
 
-    if buttonKey == ord('q'):
+    if buttonKey == ord('q'):   # If button 'q', ends the application 
         break
 
-    if buttonKey == ord('f'):
+    if buttonKey == ord('f'):   # If button 'f', start the predetermined route
 
-        # Sequência de comandos para movimentação do robô
+        # Sequence of commands for moving the SoBot
         serialUSB.write(b"LT E1 RD20 GR70 BL30")
-        serialUSB.write(b"MT0 E1 D420 AT1500 DT0 V8")   # Reta inicial
+        serialUSB.write(b"MT0 E1 D420 AT1500 DT0 V8")   # Initial straight
         serialUSB.write(b"LT E1 RD50 GR0 BL5")
-        serialUSB.write(b"MT0 E1 D1450 AT0 DT0 V8")     # Área de plantiu
+        serialUSB.write(b"MT0 E1 D1450 AT0 DT0 V8")     # Planting area
         serialUSB.write(b"LT E1 RD50 GR0 BL0")
-        serialUSB.write(b"MT0 D47 DF L RI200 V8")       # Manobra da cabeceira
+        serialUSB.write(b"MT0 D47 DF L RI200 V8")       # Headboard maneuver
         serialUSB.write(b"MT0 D270 DF R RI400 V8")
         serialUSB.write(b"MT0 D56 DF L RI300 V8")
         serialUSB.write(b"MT0 D21 DF R RI200 V8")
         serialUSB.write(b"LT E1 RD20 GR70 BL30")
-        serialUSB.write(b"MT0 D550 AT0 DT0 V8")         # Reta para indireitar o implemento
+        serialUSB.write(b"MT0 D550 AT0 DT0 V8")         # Straight to straighten the implement
         serialUSB.write(b"LT E1 RD50 GR0 BL5")
-        serialUSB.write(b"MT0 D1450 AT0 DT0 V8")        # Área de plantiu
+        serialUSB.write(b"MT0 D1450 AT0 DT0 V8")        # Planting area
         serialUSB.write(b"LT E1 RD20 GR70 BL30")
-        serialUSB.write(b"MT0 D50 DF L RI300 V8")       # Manobra para saída da área de teste
+        serialUSB.write(b"MT0 D50 DF L RI300 V8")       # Maneuver to leave the planting area
         serialUSB.write(b"MT0 D510 AT0 DT0 V8")
         serialUSB.write(b"MT0 D54 DF R RI290 V8")
         serialUSB.write(b"MT0 D1000 AT0 DT1500 V8")
         serialUSB.write(b"LT E0 RD0 GR0 BL0")
 
 
-    if buttonKey == ord('b'):
+    if buttonKey == ord('b'):   # If button 'b', break the movement
         serialUSB.write(b"MT0 BC")
         serialUSB.write(b"MT0 E0")
         serialUSB.write(b"LT E0 RD0 GR0 BL0") 
 
-    if buttonKey == ord('s'):
+    if buttonKey == ord('s'):   # If button 's', enable the motors
         serialUSB.write(b"MT0 E1")
         serialUSB.write(b"LT E1 RD20 GR70 BL30") 
     
-    if buttonKey == ord('1'):
+    if buttonKey == ord('1'):   # If button '1', controls digital output 1
         if flag_D1 == 0:
             flag_D1 = 1
             serialUSB.write(b"DO1 E1")
         else:
             flag_D1 = 0
             serialUSB.write(b"DO1 E0")
-    if buttonKey == ord('2'):
+
+    if buttonKey == ord('2'):   # If button '2', controls digital output 2
         if flag_D2 == 0:
             flag_D2 = 1
             serialUSB.write(b"DO2 E1")
         else:
             flag_D2 = 0
             serialUSB.write(b"DO2 E0")
-    if buttonKey == ord('3'):
+
+    if buttonKey == ord('3'):   # If button '3', controls digital output 3
         if flag_D3 == 0:
             flag_D3 = 1
             serialUSB.write(b"DO3 E1")
         else:
             flag_D3 = 0
             serialUSB.write(b"DO3 E0")
-    if buttonKey == ord('4'):
+
+    if buttonKey == ord('4'):   # If button '4', controls digital output 4
         if flag_D4 == 0:
             flag_D4 = 1
             serialUSB.write(b"DO4 E1")
@@ -400,7 +415,7 @@ while True:
             serialUSB.write(b"DO4 E0")
 
 
-# cleanup the camera and close any open windows
+# Cleanup the camera and close any open windows
 camera.release()
 cv2.destroyAllWindows()
 
