@@ -298,7 +298,7 @@ while True:
         # contours of very small area are ignored
         #print(str(cv2.contourArea(c))+' '+str(color))
         if cv2.contourArea(c) > AreaContornoLimiteMin: 
-            # obtem coordenadas do contorno e realca o contorno com um retangulo.
+            # get contour coordinates and highlight the contour with a rectangle
             (x, y, w, h) = cv2.boundingRect(c)  #x e y: top left vertex coordinates
                                                 #w e h: respectively width and height of the rectangle
             # Adds found contour to tracking function
