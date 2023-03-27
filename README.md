@@ -127,11 +127,25 @@ Range = Range1 + Range2 + Range3
 cnts,_ = cv2.findContours(Range.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 ~~~
 
-After identifying the objects, functions from the **'tracker'** library are used to number and follow the objects, then the **'CntsOutputTest'** function checks the position of each object on the screen to trigger the respective digital output.
-
-tracker = EuclideanDistTracker()
+Checks if the contour is greater than the established minimum value, highlights the found contours with a rectangle and adds them to the list of contours for the follow function.
 
 ~~~python
+    for c in cnts:
+        # contours of very small area are ignored
+        #print(str(cv2.contourArea(c))+' '+str(color))
+        if cv2.contourArea(c) > AreaContornoLimiteMin: 
+            # get contour coordinates and highlight the contour with a rectangle
+            (x, y, w, h) = cv2.boundingRect(c)  #x e y: top left vertex coordinates
+                                                #w e h: respectively width and height of the rectangle
+            # Adds found contour to tracking function
+            detections.append([x, y, w, h])
+~~~
+
+After identifying the objects, functions from the **'tracker'** library are used to number and follow the objects, then the **'CntsOutputTest'** function checks the position of each object on the screen to trigger the respective digital output.
+
+~~~python
+tracker = EuclideanDistTracker()
+
 # Marks the traced contours on the screen and counts them
 boxes_ids = tracker.update(detections)
 for box_id in boxes_ids:
@@ -174,7 +188,7 @@ for rect in objects_rect:
     cy = (y + y + h) // 2
 ~~~
 
-Checks if new objects were found with dimensions greater than 25 pixels. If detected for the first time, it marks an ID to identify it, if the object already has an ID, it only obtains its position on the screen.
+Checks if the object has moved 25 pixels in either direction relative to the center of the object. If detected for the first time, it marks an ID to identify it, if the object already has an ID, it only obtains its position on the screen.
 
 
 ~~~python
@@ -191,10 +205,10 @@ for id, pt in self.center_points.items():
        break
 
     # New object is detected we assign the ID to that object
-        if same_object_detected is False:
-            self.center_points[self.id_count] = (cx, cy)
-            objects_bbs_ids.append([x, y, w, h, self.id_count])
-            self.id_count += 1
+    if same_object_detected is False:
+        self.center_points[self.id_count] = (cx, cy)
+        objects_bbs_ids.append([x, y, w, h, self.id_count])
+        self.id_count += 1
 ~~~
 
 ### Flowchart
