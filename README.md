@@ -130,15 +130,15 @@ cnts,_ = cv2.findContours(Range.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMP
 Checks if the contour is greater than the established minimum value, highlights the found contours with a rectangle and adds them to the list of contours for the follow function.
 
 ~~~python
-    for c in cnts:
-        # contours of very small area are ignored
-        #print(str(cv2.contourArea(c))+' '+str(color))
-        if cv2.contourArea(c) > AreaContornoLimiteMin: 
-            # get contour coordinates and highlight the contour with a rectangle
-            (x, y, w, h) = cv2.boundingRect(c)  #x e y: top left vertex coordinates
-                                                #w e h: respectively width and height of the rectangle
-            # Adds found contour to tracking function
-            detections.append([x, y, w, h])
+for c in cnts:
+    # contours of very small area are ignored
+    #print(str(cv2.contourArea(c))+' '+str(color))
+    if cv2.contourArea(c) > AreaContornoLimiteMin: 
+        # get contour coordinates and highlight the contour with a rectangle
+        (x, y, w, h) = cv2.boundingRect(c)  #x e y: top left vertex coordinates
+                                            #w e h: respectively width and height of the rectangle
+        # Adds found contour to tracking function
+        detections.append([x, y, w, h])
 ~~~
 
 After identifying the objects, functions from the **'tracker'** library are used to number and follow the objects, then the **'CntsOutputTest'** function checks the position of each object on the screen to trigger the respective digital output.
@@ -165,6 +165,7 @@ for box_id in boxes_ids:
 
 ### Flowchart
 
+![](https://github.com/SolisTecnologia/SoBot-Agri-Tech/blob/main/png/Flowchart_Agri-Tech.png)
 
 ## Agri-Tech application - [tracker.py](https://github.com/SolisTecnologia/SoBot-Agri-Tech/blob/main/tracker.py)
 
@@ -210,8 +211,8 @@ for id, pt in self.center_points.items():
         objects_bbs_ids.append([x, y, w, h, self.id_count])
         self.id_count += 1
 ~~~
-
-### Flowchart
+  
+  
 
 For more information about the commands used, check the Robot Commands Reference Guide.
 
