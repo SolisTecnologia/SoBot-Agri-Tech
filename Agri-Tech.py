@@ -43,7 +43,10 @@ idTempQ2 = 65535                # Variable to store a detected ID and count only
 idTempQ3 = 65535                # Variable to store a detected ID and count only once in section 3
 idTempQ4 = 65535                # Variable to store a detected ID and count only once in section 4
 count_p = 0                     # Incremental variable to identify start and end time triggers
-
+flag_D1 = 0
+flag_D2 = 0
+flag_D3 = 0
+flag_D4 = 0
 '''
 ###################################
         Auxiliary Functions
@@ -125,6 +128,7 @@ def CntsOutputTest(Frame,x, y, w, h, idOut,colorId,CoordYSaida,CoordXLeft,CoordX
         colorRet = (40,180,255)
     else:
         colorRet = (255,180,20)
+
     cv2.rectangle(Frame, (x, y), (x + w, y + h), colorRet, 2)
 
     # Determines the center point of the contour and draws a circle to indicate
@@ -185,13 +189,19 @@ def CntsOutputTest(Frame,x, y, w, h, idOut,colorId,CoordYSaida,CoordXLeft,CoordX
         Main Functions
 ###################################
 '''
-flag_D1 = 0
-flag_D2 = 0
-flag_D3 = 0
-flag_D4 = 0
-tracker = EuclideanDistTracker()
+
+# Set serial port
+serialUSB = serial.Serial('/dev/ttyACM0', 57600, timeout=0, dsrdtr=False)
+serialUSB.flush()       # Waits data configuration
+
+# Configure wheel parameters
+serialUSB.write(b"WP MT1 WD99,65")
+serialUSB.write(b"WP MT2 WD100,25")
+serialUSB.write(b"WP DW261")
+sleep(0.1)
 
 camera = cv2.VideoCapture(0, cv2.CAP_V4L2)  # Capture video from camera
+
 # Set camera settings
 camera.set(3, 640)  # set frame width
 camera.set(4, 360)  # set frame height
@@ -210,44 +220,27 @@ kernel = np.ones((3, 3), np.uint8)
 #lower = np.array([44, 100, 120])
 #upper = np.array([55, 200, 220])
 ###### LIGHT GREEN WITH WHITE BACKGROUND #####
-lower = np.array([44, 85, 50])
-upper = np.array([55, 230, 160])
+green_lower = np.array([44, 85, 50])
+green_upper = np.array([55, 230, 160])
 ##### RED #####
 #lower2 = np.array([0, 85, 150])
 #upper2 = np.array([15, 255, 255])
 ##### RED WITH WHITE BACKGROUND #####
-lower2 = np.array([0, 115, 80])
-upper2 = np.array([10, 230, 185])
-lower1 = np.array([170, 115, 80])
-upper1 = np.array([180, 230, 185])
+red_lower1 = np.array([0, 115, 80])
+red_upper1 = np.array([10, 230, 185])
+red_lower2 = np.array([170, 115, 80])
+red_upper2 = np.array([180, 230, 185])
 ##### PURPLE WITH WHITE BACKGROUND #####
 #lower3 = np.array([120, 75, 80])
 #upper3 = np.array([140, 220, 185])
 
-TextColor = ""
-colorId = 0
-colorHSV = []
-DilateBulr3 = 0
-MoveW = 0
-
-# Set serial port
-serialUSB = serial.Serial('/dev/ttyACM0', 57600, timeout=0, dsrdtr=False)
-serialUSB.flush()       # Waits data configuration
-
-# Laço para realizar a leitura de alguns frames antes de iniciar a analise para estabilização da luminosidade da câmera
-for i in range(0,20):
-    grabbed, Frame = camera.read()
-
-# Configure wheel parameters
-serialUSB.write(b"WP MT1 WD99,65")
-sleep(0.1)
-serialUSB.write(b"WP MT2 WD100,25")
-sleep(0.1)
-serialUSB.write(b"WP DW261")
-sleep(0.1)
 
 # Initialize tracking variables
 tracker = EuclideanDistTracker()
+
+#Loop to read some frames before starting the analysis to stabilize the camera's brightness
+for i in range(0,20):
+    grabbed, Frame = camera.read()
 
 
 while True:
@@ -262,34 +255,28 @@ while True:
     height = int(np.size(Frame,0))
     width = int(np.size(Frame,1))
 
+    CoordenadaYLinhaSaida = int((height / 2)+OffsetLinhaSaida)
+    CoordenadaXLeft = int(((width/2)/2)-1)
+    CoordenadaXCenter = int(width/2)
+    CoordenadaXRight = int((width/2) + CoordenadaXLeft + 2)
+
     # Determines the region to perform object identification
     roi = Frame[AreaMinY:AreaMaxY, 0:width]
 
     # Filters for frame color treatment
     FrameBulr = cv2.GaussianBlur(roi, (19, 19), 0)
     FrameHsv = cv2.cvtColor(FrameBulr, cv2.COLOR_BGR2HSV)
+    kernel = np.ones((3, 3), np.uint8)
     erode = cv2.erode(FrameHsv, kernel, iterations=1)
     dilate = cv2.dilate(erode, kernel, iterations=1)
 
     # Determines the Color Range for locating contours
-    Range1 = cv2.inRange(dilate, lower, upper)
-    Range2 = cv2.inRange(dilate, lower2, upper2)
-    Range3 = cv2.inRange(dilate, lower1, upper1)
+    Range1 = cv2.inRange(dilate, green_lower, green_upper)
+    Range2 = cv2.inRange(dilate, red_lower1, red_upper1)
+    Range3 = cv2.inRange(dilate, red_lower2, red_upper2)
     Range = Range1 + Range2 + Range3
+    
     cnts,_ = cv2.findContours(Range.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
-    # Draw reference lines
-    CoordenadaYLinhaSaida = int((height / 2)+OffsetLinhaSaida)
-    CoordenadaXLeft = int(((width/2)/2)-1)
-    CoordenadaXCenter = int(width/2)
-    CoordenadaXRight = int((width/2) + CoordenadaXLeft + 2)
-
-    cv2.line(Frame, (CoordenadaXLeft,0), (CoordenadaXLeft,height), (200, 255, 100), 1)
-    cv2.line(Frame, (CoordenadaXCenter,0), (CoordenadaXCenter,height), (200, 255, 100), 1)
-    cv2.line(Frame, (CoordenadaXRight,0), (CoordenadaXRight,height), (200, 255, 100), 1)
-    cv2.line(Frame, (0,CoordenadaYLinhaSaida), (width,CoordenadaYLinhaSaida), (0, 0, 200), 6)
-    cv2.line(Frame, (0,AreaMinY), (width,AreaMinY), (200, 255, 100), 1)
-    cv2.line(Frame, (0,AreaMaxY), (width,AreaMaxY), (200, 255, 100), 1)
 
     # Scans the areas found
     detections = []
@@ -304,23 +291,30 @@ while True:
             # Adds found contour to tracking function
             detections.append([x, y, w, h])
 
+
     # Marks the traced contours on the screen and counts them
     boxes_ids = tracker.update(detections)
     for box_id in boxes_ids:
         colorHSV = []
         x, y, w, h, id = box_id
         colorHSV = dilate[int(y+(h/2))][int(x+(w/2))]
-        if (colorHSV[0] >= 0 and colorHSV[0] <= 15) or (colorHSV[0] >= 170 and colorHSV[0] <= 180):
-            #TextColor = "Red"
+        if (colorHSV[0] >= red_lower1[0] and colorHSV[0] <= red_upper1[0]) or (colorHSV[0] >= red_lower2[0] and colorHSV[0] <= red_upper2[0]):
             colorId = 1
-        elif colorHSV[0] >= 44 and colorHSV[0] <= 55:
-            #TextColor = "Green"
+        elif colorHSV[0] >= green_lower[0] and colorHSV[0] <= green_upper[0]:
             colorId = 0
         
-        CntsOutputTest(Frame,x, y+AreaMinY, w, h, id,colorId,CoordenadaYLinhaSaida,CoordenadaXLeft,CoordenadaXCenter,CoordenadaXRight,serialUSB,width)
+        CntsOutputTest(Frame, x, y+AreaMinY, w, h, id, colorId, CoordenadaYLinhaSaida, CoordenadaXLeft, CoordenadaXCenter, CoordenadaXRight,serialUSB,width)
 
     # Informs in the image the number of objects that passed through the predetermined zones
     TotalSaidas = ContadorSaidasGreen + ContadorSaidas
+
+    # Draw reference lines
+    cv2.line(Frame, (CoordenadaXLeft,0), (CoordenadaXLeft,height), (200, 255, 100), 1)
+    cv2.line(Frame, (CoordenadaXCenter,0), (CoordenadaXCenter,height), (200, 255, 100), 1)
+    cv2.line(Frame, (CoordenadaXRight,0), (CoordenadaXRight,height), (200, 255, 100), 1)
+    cv2.line(Frame, (0,CoordenadaYLinhaSaida), (width,CoordenadaYLinhaSaida), (0, 0, 200), 6)
+    cv2.line(Frame, (0,AreaMinY), (width,AreaMinY), (200, 255, 100), 1)
+    cv2.line(Frame, (0,AreaMaxY), (width,AreaMaxY), (200, 255, 100), 1)
 
     cv2.rectangle(Frame, (0,0), (width,27), (255,255,255), -1)
     cv2.rectangle(Frame, (0,height-25), (width,height), (255,255,255), -1)
@@ -349,28 +343,9 @@ while True:
     if buttonKey == ord('q'):   # If button 'q', ends the application 
         break
 
-    if buttonKey == ord('f'):   # If button 'f', start the predetermined route
-
-        # Sequence of commands for moving the SoBot
+    if buttonKey == ord('f'):   # If button 'f', move forward
         serialUSB.write(b"LT E1 RD20 GR70 BL30")
-        serialUSB.write(b"MT0 E1 D420 AT1500 DT0 V8")   # Initial straight
-        serialUSB.write(b"LT E1 RD50 GR0 BL5")
-        serialUSB.write(b"MT0 E1 D1450 AT0 DT0 V8")     # Planting area
-        serialUSB.write(b"LT E1 RD50 GR0 BL0")
-        serialUSB.write(b"MT0 D47 DF L RI200 V8")       # Headboard maneuver
-        serialUSB.write(b"MT0 D270 DF R RI400 V8")
-        serialUSB.write(b"MT0 D56 DF L RI300 V8")
-        serialUSB.write(b"MT0 D21 DF R RI200 V8")
-        serialUSB.write(b"LT E1 RD20 GR70 BL30")
-        serialUSB.write(b"MT0 D550 AT0 DT0 V8")         # Straight to straighten the implement
-        serialUSB.write(b"LT E1 RD50 GR0 BL5")
-        serialUSB.write(b"MT0 D1450 AT0 DT0 V8")        # Planting area
-        serialUSB.write(b"LT E1 RD20 GR70 BL30")
-        serialUSB.write(b"MT0 D50 DF L RI300 V8")       # Maneuver to leave the planting area
-        serialUSB.write(b"MT0 D510 AT0 DT0 V8")
-        serialUSB.write(b"MT0 D54 DF R RI290 V8")
-        serialUSB.write(b"MT0 D1000 AT0 DT1500 V8")
-        serialUSB.write(b"LT E0 RD0 GR0 BL0")
+        serialUSB.write(b"MT0 E1 D1000 AT300 DT300 V8")   
 
 
     if buttonKey == ord('b'):   # If button 'b', break the movement
